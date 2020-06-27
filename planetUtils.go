@@ -9,8 +9,6 @@ import (
 	"net/http"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Planet struct {
@@ -18,8 +16,10 @@ type Planet struct {
 	Nome    string             `bson:"nome",omitempty`
 	Clima   string             `bson:"clima",omitempty`
 	Terreno string             `bson:"terreno",omitempty`
-	Films   int                `bson:"films",omitempty`
+	Filmes  int                `bson:"films",omitempty`
 }
+
+//This function searchs the other SW api to find the number of movies in witch the planet appears
 
 func getFilms(name string) (movies int, err error) {
 	resp, err := http.Get(fmt.Sprintf("https://swapi.dev/api/planets/?search=%v", name))
@@ -50,15 +50,4 @@ func getFilms(name string) (movies int, err error) {
 		movies = len(films)
 	}
 	return movies, err
-}
-
-func getPodcast(collection *mongo.Collection, query bson.M) []Planet {
-	cursor, err := collection.Find(ctx, query)
-	if err != nil {
-		panic(err)
-	}
-	var pd []Planet
-	cursor.All(ctx, &pd)
-
-	return pd
 }

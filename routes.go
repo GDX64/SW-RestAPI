@@ -1,19 +1,24 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gopkg.in/mgo.v2/bson"
 )
+
+//=======Functions used in the routs ==============
 
 func listAllPlanets(w http.ResponseWriter, r *http.Request) {
 	var planets []Planet
 
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	cursor, err := planetsColl.Find(ctx, bson.M{})
 	if err != nil {
 		log.Fatal(err)
@@ -30,6 +35,7 @@ func listAllPlanets(w http.ResponseWriter, r *http.Request) {
 func findPlanet(w http.ResponseWriter, r *http.Request) {
 	queries := r.URL.Query()
 	var planet Planet
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	if queries["id"] != nil {
 		id := queries["id"][0]
@@ -61,30 +67,39 @@ func findPlanet(w http.ResponseWriter, r *http.Request) {
 func insertPlanet(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	var planet Planet
+
+	if !json.Valid(body) {
+		fmt.Fprintf(w, "Data is not valid JSON\n")
+		return
+	}
 	json.Unmarshal(body, &planet)
 
 	//====Inserting Stuff=======
 	var err error
 
 	planet.ID = primitive.NewObjectID()
-	planet.Films, err = getFilms(planet.Nome)
+	planet.Filmes, err = getFilms(planet.Nome)
 
 	if err != nil {
 		fmt.Fprintf(w, "The named planet does not exist in the sw universe \n")
 		return
 	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	planetResult, err := planetsColl.InsertOne(ctx, planet)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Fprintf(w, "inserted ID = %v \n", planetResult.InsertedID)
+	fmt.Fprintf(w, "inserted ID = %v, data=%v \n", planetResult.InsertedID, planet)
 }
 
 func deletePlanet(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	objID, err := primitive.ObjectIDFromHex(query["id"][0])
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
 	if err != nil {
 		log.Println(err)
 	}
